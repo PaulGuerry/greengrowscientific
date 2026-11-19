@@ -4,3 +4,7 @@ tree.txt
 
 # Files ending in "Identifier" (anywhere in the tree)
 *Identifier
+
+# Other helper
+citations.txt
+fetch_dois.py
