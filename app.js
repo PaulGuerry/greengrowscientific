@@ -3,6 +3,7 @@
   'use strict';
 
   var DATA = window.GGS_DATA || {};
+  var DOIS = window.GGS_DOIS || {};
   var BASE_TITLE = 'Green Grow Scientific';
   var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
                 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -10,7 +11,26 @@
   var app = document.getElementById('app');
   var nav = document.getElementById('nav');
 
-  /* ---------------- DOM helpers ---------------- */
+  /* ---------------- 1. LANGUAGE & TRANSLATIONS ---------------- */
+  
+  // Detect language: localStorage > domain > default to EN
+  var isFrenchDomain = window.location.hostname.indexOf('greengrowscience.fr') !== -1;
+  var currentLang = localStorage.getItem('ggs_lang') || (isFrenchDomain ? 'fr' : 'en');
+
+  function t(key) {
+    return (DATA.translations && DATA.translations[currentLang] && DATA.translations[currentLang][key]) || key;
+  }
+
+  // Automatically attach DOIs from dois.js to publications in data.js
+  if (DATA.publications) {
+    DATA.publications.forEach(function(pub) {
+      if (DOIS[pub.title] && !pub.url) {
+        pub.url = DOIS[pub.title];
+      }
+    });
+  }
+
+  /* ---------------- 2. DOM HELPERS ---------------- */
 
   function el(tag, attrs) {
     var node = document.createElement(tag);
@@ -64,32 +84,30 @@
     return MONTHS[monthIndex] + ' ' + match[1];
   }
 
-  /* ---------------- views ---------------- */
+  function getMaskedEmail(email) {
+    if (!email) return null;
+    var parts = email.split('@');
+    var address = parts[0] + '@' + parts[1];
+    return el('a', { href: 'mailto:' + address }, address);
+  }
 
+  /* ---------------- 3. VIEWS ---------------- */
+
+  
   function renderHome() {
     document.title = BASE_TITLE;
-    var lede = (DATA.home && DATA.home.lede) || '';
-    if (lede) add(app, el('p', null, lede));
-    add(app, el('p', { class: 'meta' },
-      'Use the links above for research, writing, resources, and quotes.'));
+    // Lede removed. Page will just show the nav and nothing else.
   }
 
   function renderResearch() {
-    document.title = 'Research — ' + BASE_TITLE;
-
+    document.title = t('nav_research') + ' — ' + BASE_TITLE;
     var pubs = (DATA.publications || []).slice();
-
-    if (DATA.scholarUrl) {
-      add(app, el('p', { class: 'meta' },
-        'Full, current list on ', extLink(DATA.scholarUrl, 'Google Scholar'), '.'));
-    }
 
     if (!pubs.length) {
       add(app, el('p', { class: 'muted' }, 'Publication list coming soon.'));
       return;
     }
 
-    // Reverse chronological.
     pubs.sort(function (a, b) {
       return (Number(b.year) || 0) - (Number(a.year) || 0);
     });
@@ -102,107 +120,84 @@
       byYear[year].push(pub);
     });
 
+    var totalPubs = pubs.length;
+    var currentIndex = 0;
+
     years.forEach(function (year) {
       add(app, el('h2', null, year));
       add(app, el('ul', null, byYear[year].map(function (pub) {
+        var pubNumber = totalPubs - currentIndex;
+        currentIndex++;
+
         var meta = [];
         if (pub.authors) meta.push(pub.authors);
         if (pub.venue) meta.push(pub.venue);
+
+        var titlePrefix = '[' + pubNumber + '] ';
+        var titleNode = pub.url 
+          ? el('a', { href: pub.url, target: '_blank', rel: 'noopener' }, titlePrefix + (pub.title || '(untitled)'))
+          : el('span', null, titlePrefix + (pub.title || '(untitled)'));
+
         return el('li', null,
-          el('div', { class: 'pub-title' }, pub.title || '(untitled)'),
-          meta.length ? el('div', { class: 'meta' }, meta.join(' · ')) : null,
-          pub.url ? el('div', { class: 'meta' }, extLink(pub.url, 'link')) : null
+          el('div', { class: 'pub-title' }, titleNode),
+          meta.length ? el('div', { class: 'meta' }, meta.join(' · ')) : null
         );
       })));
     });
   }
 
   function renderWriting() {
-    document.title = 'Writing — ' + BASE_TITLE;
-
+    document.title = t('nav_writing') + ' — ' + BASE_TITLE;
     var items = (DATA.writing || []).slice();
-
     if (!items.length) {
       add(app, el('p', { class: 'muted' }, 'Nothing here yet.'));
       return;
     }
-
     items.sort(function (a, b) {
       return String(b.date || '').localeCompare(String(a.date || ''));
     });
-
     add(app, el('ul', null, items.map(function (item) {
       return el('li', null,
         el('div', null, item.file
-          ? el('a', { href: item.file, target: '_blank', rel: 'noopener' },
-              item.title || item.file)
+          ? el('a', { href: item.file, target: '_blank', rel: 'noopener' }, item.title || item.file)
           : (item.title || 'Untitled')),
         item.date ? el('div', { class: 'meta' }, formatDate(item.date)) : null,
         item.description ? el('div', { class: 'meta' }, item.description) : null
       );
     })));
   }
-
   function renderResources() {
-    document.title = 'Resources — ' + BASE_TITLE;
-
+    document.title = t('nav_resources') + ' — ' + BASE_TITLE;
     var items = DATA.resources || [];
-
+    
     if (!items.length) {
       add(app, el('p', { class: 'muted' }, 'Nothing here yet.'));
       return;
     }
-
+    
     add(app, el('ul', null, items.map(function (item) {
+      var name = t('res_' + item.key + '_name');
+      var desc = t('res_' + item.key + '_desc');
+
       return el('li', null,
-        el('div', null, item.url ? extLink(item.url, item.name) : item.name),
-        item.description ? el('div', { class: 'meta' }, item.description) : null
+        el('div', null, item.url ? extLink(item.url, name) : name),
+        desc ? el('div', { class: 'meta' }, desc) : null
       );
     })));
   }
+  
+  
 
   function renderQuote() {
-    document.title = 'Quote — ' + BASE_TITLE;
+    document.title = t('nav_quote') + ' — ' + BASE_TITLE;
+    var email = (DATA.quote && DATA.quote.email) || 'greengrowsci@gmail.com';
+    add(app, el('p', null, t('quote_text'), getMaskedEmail(email), '.'));
+  }
 
-    var email = (DATA.quote && DATA.quote.email) || 'hello@greengrowscientific.com';
-
-    add(app,
-      el('p', null, 'Tell me about your project and I will come back with a quote.'),
-      el('p', { class: 'meta' }, 'Or email ', el('a', { href: 'mailto:' + email }, email), '.')
-    );
-
-    var form = el('form', null,
-      field('Name', el('input', { type: 'text', name: 'name', required: true, autocomplete: 'name' })),
-      field('Email', el('input', { type: 'email', name: 'email', required: true, autocomplete: 'email' })),
-      field('Organisation (optional)', el('input', { type: 'text', name: 'org' })),
-      field('What do you need?', el('textarea', { name: 'message', rows: 6, required: true })),
-      el('button', { type: 'submit' }, 'Create email')
-    );
-
-    form.addEventListener('submit', function (event) {
-      event.preventDefault();
-
-      function value(name) {
-        var input = form.elements[name];
-        return input && input.value ? input.value.trim() : '';
-      }
-
-      var body = [
-        'Name: ' + value('name'),
-        'Email: ' + value('email'),
-        'Organisation: ' + (value('org') || '-'),
-        '',
-        value('message')
-      ].join('\n');
-
-      window.location.href = 'mailto:' + email +
-        '?subject=' + encodeURIComponent('Quote request from ' + value('name')) +
-        '&body=' + encodeURIComponent(body);
-    });
-
-    add(app, form,
-      el('p', { class: 'meta' },
-        'This opens your email client — nothing is sent to a server.'));
+  function renderContact() {
+    document.title = t('nav_contact') + ' — ' + BASE_TITLE;
+    var email = (DATA.quote && DATA.quote.email) || 'greengrowsci@gmail.com';
+    add(app, el('p', null, t('contact_text'), getMaskedEmail(email)));
   }
 
   function renderNotFound() {
@@ -210,14 +205,15 @@
     add(app, el('p', null, 'Nothing here. ', el('a', { href: '#/' }, 'Go home'), '.'));
   }
 
-  /* ---------------- router ---------------- */
+  /* ---------------- 4. ROUTER & NAV ---------------- */
 
   var ROUTES = {
     '/': renderHome,
     '/research': renderResearch,
     '/writing': renderWriting,
     '/resources': renderResources,
-    '/quote': renderQuote
+    '/quote': renderQuote,
+    '/contact': renderContact
   };
 
   function currentPath() {
@@ -230,6 +226,7 @@
   function updateNav(path) {
     Array.prototype.forEach.call(nav.querySelectorAll('a'), function (a) {
       var target = a.getAttribute('href').replace(/^#/, '');
+      
       if (target === path) {
         a.classList.add('active');
         a.setAttribute('aria-current', 'page');
@@ -237,6 +234,10 @@
         a.classList.remove('active');
         a.removeAttribute('aria-current');
       }
+
+      // Translate the nav text
+      var i18nKey = a.getAttribute('data-i18n');
+      if (i18nKey) a.textContent = t(i18nKey);
     });
   }
 
@@ -252,6 +253,38 @@
 
   var yearEl = document.getElementById('year');
   if (yearEl) yearEl.textContent = new Date().getFullYear();
+
+  /* ---------------- 5. LANGUAGE TOGGLE EVENTS ---------------- */
+
+  var btnEn = document.getElementById('btn-en');
+  var btnFr = document.getElementById('btn-fr');
+
+  if (btnEn && btnFr) {
+    // Highlight the active button
+    if (currentLang === 'fr') {
+      btnFr.style.fontWeight = 'bold';
+      btnFr.style.textDecoration = 'none';
+      btnEn.style.color = '#0645ad'; // reset to default link color
+    } else {
+      btnEn.style.fontWeight = 'bold';
+      btnEn.style.textDecoration = 'none';
+      btnFr.style.color = '#0645ad';
+    }
+
+    btnEn.addEventListener('click', function(e) {
+      e.preventDefault();
+      localStorage.setItem('ggs_lang', 'en');
+      currentLang = 'en';
+      window.location.reload(); // Reload is the safest way to reset everything cleanly
+    });
+
+    btnFr.addEventListener('click', function(e) {
+      e.preventDefault();
+      localStorage.setItem('ggs_lang', 'fr');
+      currentLang = 'fr';
+      window.location.reload();
+    });
+  }
 
   render();
 })();

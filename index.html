@@ -10,15 +10,23 @@
 </head>
 <body>
 
-<header>
-  <h1><a href="#/">Green Grow Scientific</a></h1>
-  <nav id="nav">
-    <a href="#/research">Research</a>
-    <a href="#/writing">Writing</a>
-    <a href="#/resources">Resources</a>
-    <a href="#/quote">Quote</a>
-  </nav>
+
+<header style="display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap;">
+  <div>
+    <h1><a href="#/">Green Grow Scientific</a></h1>
+    <nav id="nav">
+      <a href="#/research" data-i18n="nav_research">Research</a>
+      <a href="#/writing" data-i18n="nav_writing">Writing</a>
+      <a href="#/resources" data-i18n="nav_resources">Resources</a>
+      <a href="#/quote" data-i18n="nav_quote">Quote</a>
+      <a href="#/contact" data-i18n="nav_contact">Contact</a>
+    </nav>
+  </div>
+  <div id="lang-toggle" style="font-size: 0.9rem;">
+    <a href="#" id="btn-en">EN</a> | <a href="#" id="btn-fr">FR</a>
+  </div>
 </header>
+
 
 <main id="app"></main>
 
@@ -31,6 +39,7 @@
   <p class="meta">&copy; <span id="year"></span> Green Grow Scientific</p>
 </footer>
 
+<script src="dois.js"></script>
 <script src="data.js"></script>
 <script src="app.js"></script>
 </body>
