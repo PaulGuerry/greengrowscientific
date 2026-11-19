@@ -1,0 +1,6 @@
+
+# Local scratch / listings
+tree.txt
+
+# Files ending in "Identifier" (anywhere in the tree)
+*Identifier
